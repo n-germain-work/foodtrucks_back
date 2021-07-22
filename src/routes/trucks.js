@@ -41,17 +41,19 @@ router.get('/name_type', (req, res) => {
 });
 
 // renvoit un array filtrer selon n'importe quelle combinaison de type, cp, weekday, meal, voire aucun paramètre => utiliser pour la map Leaflet
-router.get('/filter', (req, res) => {
+router.post('/filter', (req, res) => {
   const { type, cp, weekday, meal } = req.body;
+  const sqlParams = [];
   const typeLike = `%${type}%`;
   const cpLike = `%${cp}%`;
-  let sql = `SELECT * FROM truck
+  let sql = `SELECT name, phone, type, weekday, start, end, meal, postal_code, latitude,longitude FROM truck
   JOIN truck_has_sale_point ON truck.id = truck_has_sale_point.truck_id
   JOIN sale_point ON truck_has_sale_point.sale_point_id = sale_point.id`;
   if (type || cp || weekday || meal) {
     sql += ' WHERE';
     if (type) {
       sql += ' type LIKE ?';
+      sqlParams.push(typeLike);
     }
     if (cp) {
       if (!type) {
@@ -59,6 +61,7 @@ router.get('/filter', (req, res) => {
       } else {
         sql += ' AND postal_code LIKE ?';
       }
+      sqlParams.push(cpLike);
     }
     if (weekday) {
       if (!type && !cp) {
@@ -66,6 +69,7 @@ router.get('/filter', (req, res) => {
       } else {
         sql += ' AND weekday = ?';
       }
+      sqlParams.push(weekday);
     }
     if (meal) {
       if (!type && !cp && !weekday) {
@@ -73,13 +77,16 @@ router.get('/filter', (req, res) => {
       } else {
         sql += ' AND meal = ?';
       }
+      sqlParams.push(meal);
     }
-    console.log(sql);
   }
-  connection.query(sql, [typeLike, cpLike, weekday, meal], (error, result) => {
+  console.log(sql);
+  console.log(sqlParams);
+  connection.query(sql, sqlParams, (error, result) => {
     if (error) {
       res.status(500).send(error);
     } else {
+      console.log(result);
       res.status(200).send({
         result,
       });
